@@ -1,0 +1,168 @@
+# IMDB Analysis
+
+## Prepare Phase
+### Pull the data from local drive
+
+df <- read.csv("imdb_top_1000.csv")
+View(df)
+
+### View all column data types
+colnames(df)
+column_types <- sapply(df, class)
+View(column_types)
+
+df2 <- df
+
+### Install and open the libraries
+
+install.packages("tidyverse")
+install.packages("dplyr")
+
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+
+## Process Phase
+### Drop Poster Link, Genre, Overview, and Gross column from the dataset
+
+df2 <- df2[, !colnames(df2) %in% c("Poster_Link", "Genre", "Overview", "Gross")]
+
+### Remove duplicate rows
+df2 <- distinct(df2)
+
+
+### Remove rows with Null values
+df2 <- na.omit(df2)
+
+### Remove " " (space) and "min" character on Runtime column and change the data type to Numeric
+df2 <- df2 %>%
+  mutate(Runtime = str_replace_all(Runtime, "min", " "))
+
+class(df3$Runtime) #char
+df3$Runtime <- as.numeric(df3$Runtime)
+class(df3$Runtime) #numeric
+
+### Filter only some values of movie Certificate
+df2 <- df2 %>%
+filter(Certificate %in% c("A", "G", "PG", "PG-13", "R", "U", "UA"))
+
+### Change data type IMDB RATING
+df2$IMDB_Rating <- as.numeric(df2$IMDB_Rating)
+
+### Change data type Released_Year, but first see the unique data if any alphabetical values
+unique(df2$Released_Year)
+
+### Remove rows contain with PG value
+df2 <- df2 %>%
+filter(Released_Year != "PG")
+df2$Released_Year <- as.numeric(df2$Released_Year)
+
+### Filter only year 1990-2020
+df2 <- df2 %>%
+ filter(Released_Year >= 1990 & Released_Year <= 2020)
+
+### Save the latest data into the local drive
+imdb_1990_to_2020 <- df2
+write.csv(imdb_1990_to_2020, file = "imdb_1990_to_2020.csv", row.names = FALSE)
+
+### All the data cleaned, and ready to be analyzed
+
+ggplot(movies_df, aes(x = released_year, y = imdb_rating)) +
+  geom_point() +
+  labs(title = "IMDb Ratings by Year", 
+  x = "Year",
+       y = "IMDb Rating") + theme_minimal()
+
+## Analysis Phase
+
+### Find mean, median, and mode of Runtime
+
+mean_runtime <- mean(imdb_1990_to_2020$Runtime)
+print(mean_runtime)
+
+median_runtime <- median(imdb_1990_to_2020$Runtime)
+print(median_runtime)
+
+get_mode <- function(v) {
+  uniq_v <- unique(v)
+  uniq_v[which.max(tabulate(match(v, uniq_v)))]
+  }
+mode_runtime <- get_mode(imdb_1990_to_2020$Runtime)
+print(mode_runtime)
+
+### mean_runtime = 123.912 min
+### median_runtime = 121 min
+### mode_runtime = 101 min
+
+### Find mean, median, and mode of IMDb Rating
+
+mean_rating <- mean(imdb_1990_to_2020$IMDB_Rating)
+print(mean_rating)
+
+median_rating <- median(imdb_1990_to_2020$IMDB_Rating)
+print(median_rating)
+
+get_mode <- function(v) {
+  uniq_v <- unique(v)
+  uniq_v[which.max(tabulate(match(v, uniq_v)))]
+}
+mode_rating <- get_mode(imdb_1990_to_2020$IMDB_Rating)
+print(mode_rating)
+
+### mean_rating = 7.91
+### median_rating = 7.8
+### mode_rating = 7.7
+
+### Find mean, median, and mode of Meta Score
+
+mean_metascore <- mean(imdb_1990_to_2020$Meta_score)
+print(mean_metascore)
+
+median_metascore <- median(imdb_1990_to_2020$Meta_score)
+print(median_metascore)
+
+get_mode <- function(v) {
+  uniq_v <- unique(v)
+  uniq_v[which.max(tabulate(match(v, uniq_v)))]
+}
+mode_metascore <- get_mode(imdb_1990_to_2020$Meta_score)
+print(mode_metascore)
+
+### mean_metascore = 75.14
+### median_metascore = 76
+### mode_metascore = 76
+
+### Find mean, median, and mode of Vote
+
+mean_vote <- mean(imdb_1990_to_2020$No_of_Votes)
+print(mean_vote)
+
+median_vote <- median(imdb_1990_to_2020$No_of_Votes)
+print(median_vote)
+
+get_mode <- function(v) {
+  uniq_v <- unique(v)
+  uniq_v[which.max(tabulate(match(v, uniq_v)))]
+}
+mode_vote <- get_mode(imdb_1990_to_2020$No_of_Votes)
+print(mode_vote)
+
+### mean_vote = 391,934.2
+### median_vote = 285,026
+### mode_vote = 2,343,110
+
+### Histogram for IMDb ratings
+
+ggplot(imdb_1990_to_2020, aes(x = IMDB_Rating)) + 
+  geom_histogram(binwidth = 0.5, fill = "pink", color = "white", alpha = 0.7) + 
+  labs(title = "Histogram of IMDb Ratings", x = "IMDb Ratings", y = "Frequency") + theme_minimal()
+
+### Histogram for Meta Score
+
+ggplot(imdb_1990_to_2020, aes(x = Meta_score)) + 
+  geom_histogram(binwidth = 0.5, fill = "darkseagreen", color = "white", alpha = 0.7) + 
+  labs(title = "Histogram of Meta Score", x = "Meta Score", y = "Frequency") + theme_minimal()
+
+###
+
+
