@@ -18,11 +18,14 @@ df2 <- df
 install.packages("tidyverse")
 install.packages("dplyr")
 install.packages("corrplot")
+install.packages("ggrepel")
+
 
 library(tidyverse)
 library(dplyr)
 library(ggplot2)
 library(corrplot)
+library(ggrepel)
 
 ## Process Phase
 ### Drop Poster Link, Genre, Overview, and Gross column from the dataset
@@ -276,6 +279,26 @@ ggplot(df, aes(x = Certificate, y = No_of_Votes)) +
        y = "Number of Votes") +
   theme_minimal()
 
+### Investigate if certain directors or actors tend to have higher ratings. 
+### This could involve grouping data by director/actor and calculating average ratings.
+
+average_rating_director <- imdb_1990_to_2020 %>%
+  group_by(Director) %>%
+  summarise(Average_IMDb_Rating = mean(IMDB_Rating, na.rm = TRUE)) %>%
+  arrange(desc(Average_IMDb_Rating))
+print(average_rating_director)
+
+correlation <- cor(average_rating_votes$Average_Rating, average_rating_votes$Average_Votes)
+print(paste("Correlation between Average IMDb Rating and Average Number of Votes:", correlation))
+
+ggplot(average_rating_votes, aes(x = Average_Votes, y = Average_Rating)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x, color = "blue") +  # Specify the formula here
+  labs(title = "Average IMDb Rating vs. Average Number of Votes by Director",
+       x = "Average Number of Votes",
+       y = "Average IMDb Rating") +
+  theme_minimal()
+
 ### Show top 10 Directors based on Average No. of Votes
 
 average_votes_director <- imdb_1990_to_2020 %>%
@@ -294,28 +317,182 @@ ggplot(top_10_directors, aes(x = reorder(Director, Average_Votes), y = Average_V
   theme_minimal() +
   coord_flip()
 
-### Investigate if certain directors or actors tend to have higher ratings. 
-### This could involve grouping data by director/actor and calculating average ratings.
 
-average_rating_director <- imdb_1990_to_2020 %>%
-  group_by(Director) %>%
-  summarise(Average_IMDb_Rating = mean(IMDB_Rating, na.rm = TRUE)) %>%
-  arrange(desc(Average_IMDb_Rating))
-print(average_rating_director)
+### Investigate if Star1, Star2, and Star3 tend to have higher ratings.
+#### Calculate average IMDb ratings by Star1
+average_rating_star1 <- imdb_1990_to_2020 %>%
+  group_by(Star1) %>%
+  summarise(Average_Rating = mean(IMDB_Rating, na.rm = TRUE)) %>%
+  arrange(desc(Average_Rating))
+print(average_rating_star1)
 
-ggplot(average_rating_director, aes(x = reorder(Director, Average_IMDb_Rating), y = Average_IMDb_Rating)) +
+#### Bar plot of average IMDb ratings by Star1
+ggplot(average_rating_star1, aes(x = reorder(Star1, -Average_Rating), y = Average_Rating)) +
   geom_bar(stat = "identity", fill = "skyblue") +
-  labs(title = "Average IMDb Ratings by Director",
-       x = "Director",
+  labs(title = "Average IMDb Ratings by Star1",
+       x = "Star 1",
        y = "Average IMDb Rating") +
   theme_minimal() +
   coord_flip()
 
+top_10_stars1 <- imdb_1990_to_2020 %>%
+  group_by(Star1) %>%
+  summarise(Average_Rating = mean(IMDB_Rating, na.rm = TRUE)) %>%
+  arrange(desc(Average_Rating)) %>%
+  slice_head(n = 10)  # Get top 10 Stars 1
 
+print(top_10_stars1)
 
+# Bar plot of average IMDb ratings for the top 10 Star 1
+ggplot(top_10_stars1, aes(x = reorder(Star1, -Average_Rating), y = Average_Rating)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(title = "Top 10 Stars 1 by Average IMDb Ratings",
+       x = "Actor1",
+       y = "Average IMDb Rating") +
+  theme_minimal() +
+  coord_flip()
 
+## 5. Comparative Analysis
 
+### Identify the top-rated series and examine their characteristics (e.g., runtime, metascore).
 
+# Identify top-rated series (e.g., top 5)
+top_rated_series <- imdb_1990_to_2020 %>%
+  arrange(desc(IMDB_Rating)) %>%
+  slice_head(n = 5)
+print(top_rated_series)
 
+# Check the characteristics of the top-rated series
+summary(top_rated_series)
 
+library(ggplot2)
 
+# Scatter plot of IMDb Rating vs. Metascore for top-rated series. Read Library ggrepel,so the label is not overlap because there are more than 3 Series_title that has same ratings
+
+ggplot(top_rated_series, aes(x = Meta_score, y = IMDB_Rating, label = Series_Title)) +
+  geom_point(color = "brown3", size = 4) +
+  geom_text_repel() +  # Use geom_text_repel for labels
+  labs(title = "Top-Rated Series: IMDb Rating vs. Metascore",
+       x = "Metascore",
+       y = "IMDb Rating") +
+  theme_minimal()
+
+### Vote Count vs. Rating: Analyze if there is a relationship between the number of votes and IMDb ratings, possibly indicating popularity vs. quality.
+
+imdb_1990_to_2020$IMDB_Rating <- as.numeric(as.character(df$IMDB_Rating))
+imdb_1990_to_2020$No_of_Votes <- as.numeric(as.character(df$No_of_Votes))
+
+summary(imdb_1990_to_2020$IMDB_Rating)
+summary(imdb_1990_to_2020$No_of_Votes)
+
+ggplot(imdb_1990_to_2020, aes(x = No_of_Votes, y = IMDB_Rating)) +
+  geom_point(alpha = 0.5) +
+  labs(title = "Relationship Between Number of Votes and IMDb Rating",
+       x = "Number of Votes",
+       y = "IMDb Rating") +
+  scale_x_log10() +  # Log scale for better visualization
+  theme_minimal()
+
+correlation <- cor(imdb_1990_to_2020$No_of_Votes, imdb_1990_to_2020$IMDB_Rating, use = "complete.obs")
+print(paste("Correlation between No. of Votes and IMDb Rating:", correlation))
+
+###regression analysis
+model <- lm(IMDB_Rating ~ No_of_Votes, data = imdb_1990_to_2020)
+# Summary of the model
+summary(model)
+
+# Plotting the regression line
+ggplot(imdb_1990_to_2020, aes(x = No_of_Votes, y = IMDB_Rating)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", formula = y ~ x, color = "brown3") +
+  labs(title = "Regression of No. of Votes on IMDb Rating",
+       x = "Number of Votes",
+       y = "IMDb Rating") +
+  scale_x_log10() +
+  theme_minimal()
+
+## 6. Time Series Analysis
+
+### Release Patterns: Analyze the number of series released each year to identify trends in production.
+
+imdb_1990_to_2020$Released_Year <- as.numeric(as.character(imdb_1990_to_2020$Released_Year))
+
+release_patterns <- imdb_1990_to_2020 %>%
+  group_by(Released_Year) %>%
+  summarise(num_series_released = n()) %>%
+  arrange(Released_Year)
+
+### Create a line plot to visualize the number of series released each year.
+ggplot(release_patterns, aes(x = Released_Year, y = num_series_released)) +
+  geom_line(color = "blue", size = 1) +
+  geom_point() +
+  labs(title = "Number of Series Released Each Year",
+       x = "Year",
+       y = "Number of Series Released") +
+  theme_minimal()
+
+###trend line to see if there’s a clear trend over time.
+ggplot(release_patterns, aes(x = Released_Year, y = num_series_released)) +
+  geom_line(color = "blue", size = 1) +
+  geom_point() +
+  geom_smooth(method = "loess", color = "red") +  # Add a smooth trend line
+  labs(title = "Number of Series Released Each Year with Trend Line",
+       x = "Year",
+       y = "Number of Series Released") +
+  theme_minimal()
+
+### analyze the trend statistically by linear regression model
+
+model <- lm(num_series_released ~ Released_Year, data = release_patterns)
+summary(model)
+
+# Optionally plot the regression line
+ggplot(release_patterns, aes(x = Released_Year, y = num_series_released)) +
+  geom_line(color = "blue", size = 1) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x, color = "red") +  # Add a linear regression line
+  labs(title = "Number of Series Released Each Year with Regression Line",
+       x = "Year",
+       y = "Number of Series Released") +
+  theme_minimal()
+
+###Rating Trends Over Time: Create a time series plot of average ratings over the years.
+
+imdb_1990_to_2020$Released_Year <- as.numeric(as.character(imdb_1990_to_2020$Released_Year))
+imdb_1990_to_2020$IMDB_Rating <- as.numeric(as.character(imdb_1990_to_2020$IMDB_Rating))
+
+rating_trends <- imdb_1990_to_2020 %>%
+  group_by(Released_Year) %>%
+  summarise(average_rating = mean(IMDB_Rating, na.rm = TRUE)) %>%
+  arrange(Released_Year)
+
+ggplot(rating_trends, aes(x = Released_Year, y = average_rating)) +
+  geom_line(color = "blue", size = 1) +
+  geom_point() +
+  labs(title = "Average IMDb Ratings Over the Years",
+       x = "Year",
+       y = "Average IMDb Rating") +
+  theme_minimal()
+
+ggplot(rating_trends, aes(x = Released_Year, y = average_rating)) +
+  geom_line(color = "blue", size = 1) +
+  geom_point() +
+  geom_smooth(method = "loess", formula = y ~ x, color = "red") +  # Add a smooth trend line
+  labs(title = "Average IMDb Ratings Over the Years with Trend Line",
+       x = "Year",
+       y = "Average IMDb Rating") +
+  theme_minimal()
+
+# Fit a linear regression model
+model <- lm(average_rating ~ Released_Year, data = rating_trends)
+summary(model)
+
+# Plot with the regression line
+ggplot(rating_trends, aes(x = Released_Year, y = average_rating)) +
+  geom_line(color = "blue", size = 1) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x, color = "red") +  # Add a linear regression line
+  labs(title = "Average IMDb Ratings Over the Years with Regression Line",
+       x = "Year",
+       y = "Average IMDb Rating") +
+  theme_minimal()
