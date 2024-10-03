@@ -17,10 +17,12 @@ df2 <- df
 
 install.packages("tidyverse")
 install.packages("dplyr")
+install.packages("corrplot")
 
 library(tidyverse)
 library(dplyr)
 library(ggplot2)
+library(corrplot)
 
 ## Process Phase
 ### Drop Poster Link, Genre, Overview, and Gross column from the dataset
@@ -73,7 +75,9 @@ ggplot(movies_df, aes(x = released_year, y = imdb_rating)) +
   x = "Year",
        y = "IMDb Rating") + theme_minimal()
 
-## Analysis Phase
+## Analysis & Visualization Phase
+
+## 1. Descriptive Statistics
 
 ### Find mean, median, and mode of Runtime
 
@@ -152,17 +156,166 @@ print(mode_vote)
 ### mode_vote = 2,343,110
 
 ### Histogram for IMDb ratings
-
 ggplot(imdb_1990_to_2020, aes(x = IMDB_Rating)) + 
   geom_histogram(binwidth = 0.5, fill = "pink", color = "white", alpha = 0.7) + 
   labs(title = "Histogram of IMDb Ratings", x = "IMDb Ratings", y = "Frequency") + theme_minimal()
 
 ### Histogram for Meta Score
-
 ggplot(imdb_1990_to_2020, aes(x = Meta_score)) + 
   geom_histogram(binwidth = 0.5, fill = "darkseagreen", color = "white", alpha = 0.7) + 
   labs(title = "Histogram of Meta Score", x = "Meta Score", y = "Frequency") + theme_minimal()
 
-###
+## 2. Trend Analysis
+
+
+### Calculation of Average IMDb Rating and Number of Votes by year
+
+average_trends <- imdb_1990_to_2020 %>% 
+  group_by(Released_Year) %>% 
+  summarise(
+    Avg_IMDb_Rating = mean(IMDB_Rating),
+    Avg_No_of_Votes = mean(No_of_Votes)
+  )
+print(average_trends)
+View(average_trends)
+
+###code
+ggplot(average_trends, aes(x = Released_Year, y = Avg_IMDb_Rating)) +
+  geom_point(color = "brown4") +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "darkgoldenrod") + 
+  labs(title = "Average IMDb Rating Over the Years",
+       x = "Released Year",
+       y = "Average IMDb Rating") +
+  theme_minimal()
+
+ggplot(average_trends, aes(x = Released_Year, y = Avg_No_of_Votes)) +
+  geom_point(color = "darkgoldenrod2") +  # Scatter plot points
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "orange") +  # Linear regression line
+  labs(title = "Average Number of Votes Over the Years",
+       x = "Released Year",
+       y = "Average Number of Votes") +
+  theme_minimal()
+
+### combine plot
+ggplot(average_trends) +
+  geom_point(aes(x = Released_Year, y = Avg_IMDb_Rating), color = "blue", size = 3, shape = 19) +  # Scale for visibility
+  geom_smooth(aes(x = Released_Year, y = Avg_IMDb_Rating ), method = "lm", formula = y ~ x, se = FALSE, color = "red") +  # Regression line for IMDb Rating
+  # Points for average number of votes
+  geom_point(aes(x = Released_Year, y = Avg_No_of_Votes / 100000), color = "green", size = 3, shape = 17) +  # Scale for visibility
+  geom_smooth(aes(x = Released_Year, y = Avg_No_of_Votes / 100000), method = "lm", formula = y ~ x, se = FALSE, color = "orange") +  # Regression line for Votes
+  # Labels and scales
+  labs(title = "Released Year vs. Average IMDb Rating and Average Number of Votes",
+       x = "Released Year",
+       y = "Values",
+       subtitle = "Average IMDb Rating (Blue) and Average Number of Votes (Green)") +
+  scale_y_continuous(sec.axis = sec_axis(~ . * 1000, name = "Average Number of Votes (in thousands)")) +
+  theme_minimal()
+
+
+### Count the number of movies released each year and Visualize with Bar Chart & Scatter Plot  
+movies_per_year <- imdb_1990_to_2020 %>%
+  group_by(Released_Year) %>%
+  summarise(Number_of_Movies = n())
+print(movies_per_year)
+View(movies_per_year)
+
+ggplot(movies_per_year, aes(x = factor(Released_Year), y = Number_of_Movies)) +
+  geom_bar(stat = "identity", fill = "pink", color = "darkseagreen", alpha = 0.7) +
+  labs(title = "Number of Movies Released Each Year",
+       x = "Year",
+       y = "Number of Movies") +
+  theme_minimal()
+ 
+ggplot(imdb_1990_to_2020, aes(x = Released_Year, y = IMDB_Rating))+
+  geom_point(color = "bisque4", size = 3, alpha = 0.7) +
+  labs(title = "Scatter Plot of IMDb Ratings vs. Released Year",
+       x = "Released Year",
+       y = "IMDb Rating") +
+  theme_minimal()
+
+## 3. Correlation Analysis
+
+###Assess the correlation between numerical variables (e.g., runtime, IMDb rating, metascore, number of votes) to identify potential relationships.
+numerical_df <- imdb_1990_to_2020 %>%
+  select(IMDB_Rating, No_of_Votes, Runtime, Meta_score)
+
+correlation_matrix <- cor(numerical_df)
+View(correlation_matrix)
+
+plot.new()
+dev.off()
+
+corrplot(correlation_matrix, method = "circle", type = "upper", 
+tl.col = "black", tl.srt = 45, tl.cex = 0.8, title = "Correlation Matrix", mar = c(0,0,1,0))
+
+### Investigate which variables are most strongly correlated with IMDb ratings
+corrplot(correlation_matrix, method = "circle", type = "full", tl.col = "black", tl.srt = 45, 
+title = "Correlation Matrix of IMDb Ratings and Influencing Factors", mar = c(0, 0, 1, 0))
+model <- lm(IMDB_Rating ~ Runtime + Meta_score + No_of_Votes, data = df)
+summary(model)
+
+## 4. Categorical Analysis
+
+### Analyze how the certificate (e.g., PG, R) affects IMDb ratings or number of votes
+
+### Boxplot for IMDb ratings by certificate
+
+ggplot(df, aes(x = Certificate, y = IMDB_Rating)) +
+  geom_boxplot(fill = "lightblue") +
+  labs(title = "IMDb Ratings by Certificate",
+       x = "Certificate",
+       y = "IMDb Rating") +
+  theme_minimal()
+
+
+### Boxplot for Number of Votes by Certificate
+ggplot(df, aes(x = Certificate, y = No_of_Votes)) +
+  geom_boxplot(fill = "lightgreen") +
+  labs(title = "Number of Votes by Certificate",
+       x = "Certificate",
+       y = "Number of Votes") +
+  theme_minimal()
+
+### Show top 10 Directors based on Average No. of Votes
+
+average_votes_director <- imdb_1990_to_2020 %>%
+  group_by(Director) %>%
+  summarise(Average_Votes = mean(No_of_Votes, na.rm = TRUE)) %>%
+  arrange(desc(Average_Votes))
+
+top_10_directors <- average_votes_director %>%
+  top_n(10, Average_Votes)
+
+ggplot(top_10_directors, aes(x = reorder(Director, Average_Votes), y = Average_Votes)) +
+  geom_bar(stat = "identity", fill = "pink3") +
+  labs(title = "Top 10 Directors by Average Number of Votes",
+       x = "Director",
+       y = "Average Number of Votes") +
+  theme_minimal() +
+  coord_flip()
+
+### Investigate if certain directors or actors tend to have higher ratings. 
+### This could involve grouping data by director/actor and calculating average ratings.
+
+average_rating_director <- imdb_1990_to_2020 %>%
+  group_by(Director) %>%
+  summarise(Average_IMDb_Rating = mean(IMDB_Rating, na.rm = TRUE)) %>%
+  arrange(desc(Average_IMDb_Rating))
+print(average_rating_director)
+
+ggplot(average_rating_director, aes(x = reorder(Director, Average_IMDb_Rating), y = Average_IMDb_Rating)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(title = "Average IMDb Ratings by Director",
+       x = "Director",
+       y = "Average IMDb Rating") +
+  theme_minimal() +
+  coord_flip()
+
+
+
+
+
+
+
 
 
