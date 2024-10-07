@@ -298,61 +298,89 @@ ggplot(average_rating_votes, aes(x = Average_Votes, y = Average_Rating)) +
        x = "Average Number of Votes",
        y = "Average IMDb Rating") +
   theme_minimal()
+_---
+# Display only top 10 directors and actors by average IMDB Ratings
 
-### Show top 10 Directors based on Average No. of Votes
-
-average_votes_director <- imdb_1990_to_2020 %>%
+average_ratings_director <- imdb_1990_to_2020 %>%
   group_by(Director) %>%
-  summarise(Average_Votes = mean(No_of_Votes, na.rm = TRUE)) %>%
-  arrange(desc(Average_Votes))
+  summarise(Average_IMDB_Rating = mean(IMDB_Rating, na.rm = TRUE),
+            Count = n()) %>%
+  arrange(desc(Average_IMDB_Rating)) %>%
+  slice_head(n = 10)
+print(average_ratings_director)
 
-top_10_directors <- average_votes_director %>%
-  top_n(10, Average_Votes)
+# Reshape the data to long format for stars
+long_actor_data <- df %>%
+  pivot_longer(cols = c(Star1, Star2, Star3), 
+               names_to = "Star_Position", 
+               values_to = "Actor") %>%
+  select(Director, IMDB_Rating, Actor)  # Keep relevant columns
 
-ggplot(top_10_directors, aes(x = reorder(Director, Average_Votes), y = Average_Votes)) +
-  geom_bar(stat = "identity", fill = "pink3") +
-  labs(title = "Top 10 Directors by Average Number of Votes",
+# Average ratings by actor
+average_ratings_actor <- long_actor_data %>%
+  group_by(Actor) %>%
+  summarise(Average_IMDB_Rating = mean(IMDB_Rating, na.rm = TRUE),
+            Count = n()) %>%
+  arrange(desc(Average_IMDB_Rating)) %>%
+  slice_head(n = 10)  # Select top 10 actors
+
+# View the results
+print(average_ratings_actor)
+
+ggplot(average_ratings_director, aes(x = reorder(Director, Average_IMDB_Rating), y = Average_IMDB_Rating)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +  # Flip coordinates for better readability
+  labs(title = "Top 10 Directors by Average IMDb Ratings",
        x = "Director",
-       y = "Average Number of Votes") +
-  theme_minimal() +
-  coord_flip()
+       y = "Average IMDb Rating")
 
+ggplot(average_ratings_actor, aes(x = reorder(Actor, Average_IMDB_Rating), y = Average_IMDB_Rating)) +
+  geom_bar(stat = "identity", fill = "lightgreen") +
+  coord_flip() +
+  labs(title = "Top 10 Actors by Average IMDb Ratings",
+       x = "Actor",
+       y = "Average IMDb Rating")
 
-### Investigate if Star1, Star2, and Star3 tend to have higher ratings.
-#### Calculate average IMDb ratings by Star1
-average_rating_star1 <- imdb_1990_to_2020 %>%
-  group_by(Star1) %>%
-  summarise(Average_Rating = mean(IMDB_Rating, na.rm = TRUE)) %>%
-  arrange(desc(Average_Rating))
-print(average_rating_star1)
+plot_directors <- ggplot(average_ratings_director, aes(x = reorder(Director, Average_IMDB_Rating), y = Average_IMDB_Rating)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +  # Flip coordinates for better readability
+  labs(title = "Top 10 Directors by Average IMDb Ratings",
+       x = "Director",
+       y = "Average IMDb Rating")
 
-#### Bar plot of average IMDb ratings by Star1
-ggplot(average_rating_star1, aes(x = reorder(Star1, -Average_Rating), y = Average_Rating)) +
-  geom_bar(stat = "identity", fill = "skyblue") +
-  labs(title = "Average IMDb Ratings by Star1",
-       x = "Star 1",
-       y = "Average IMDb Rating") +
-  theme_minimal() +
-  coord_flip()
+# Bar plot for top 10 actors
+plot_actors <- ggplot(average_ratings_actor, aes(x = reorder(Actor, Average_IMDB_Rating), y = Average_IMDB_Rating)) +
+  geom_bar(stat = "identity", fill = "lightgreen") +
+  coord_flip() +
+  labs(title = "Top 10 Actors by Average IMDb Ratings",
+       x = "Actor",
+       y = "Average IMDb Rating")
 
-top_10_stars1 <- imdb_1990_to_2020 %>%
-  group_by(Star1) %>%
-  summarise(Average_Rating = mean(IMDB_Rating, na.rm = TRUE)) %>%
-  arrange(desc(Average_Rating)) %>%
-  slice_head(n = 10)  # Get top 10 Stars 1
+# Combine the plots
+combined_plot <- plot_directors + plot_actors
+combined_plot
 
-print(top_10_stars1)
-
-# Bar plot of average IMDb ratings for the top 10 Star 1
-ggplot(top_10_stars1, aes(x = reorder(Star1, -Average_Rating), y = Average_Rating)) +
-  geom_bar(stat = "identity", fill = "skyblue") +
-  labs(title = "Top 10 Stars 1 by Average IMDb Ratings",
-       x = "Actor1",
-       y = "Average IMDb Rating") +
-  theme_minimal() +
-  coord_flip()
 
 ## 5. Comparative Analysis
+
+# Identify the top-rated series
+top10_rated_series <- imdb_1990_to_2020 %>%
+  arrange(desc(IMDB_Rating)) %>%  # Sort by IMDb rating in descending order
+  select(Series_Title, Released_Year, IMDB_Rating, Runtime, Meta_score, No_of_Votes) %>%  # Select relevant columns
+  slice_head(n = 10)  # Get the top 10 series
+print(top10_rated_series)
+
+summary_statistics <- top10_rated_series %>%
+  summarise(
+    Average_IMDB_Rating = mean(IMDB_Rating, na.rm = TRUE),
+    Average_Runtime = mean(Runtime, na.rm = TRUE),
+    Average_Meta_Score = mean(Meta_score, na.rm = TRUE),
+    Average_No_of_Vote = mean(No_of_Vote, na.rm = TRUE)
+    Count = n()  # Count of top-rated series
+  )
+
+
+
 
 ### Identify the top-rated series and examine their characteristics (e.g., runtime, metascore).
 
